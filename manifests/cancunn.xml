@@ -7,10 +7,10 @@
     Uncomment and edit.
   -->
 
-  <!-- <remote name="mine" fetch="https://github.com/YOUR_USER" /> -->
+<remote name="mine" fetch="https://github.com/URFAVF3MBOY" /> 
 
   <!-- Vendor blobs (extract-files output). Keep them in their own repo. -->
-  <!-- <project name="proprietary_vendor_motorola_cancunn" path="vendor/motorola/cancunn" remote="mine" revision="main" /> -->
+<project name="proprietary_vendor_motorola_cancunn" path="vendor/motorola/cancunn" remote="mine" revision="main" />
 
   <!-- Kernel / modules, only once you move past the stock boot.img -->
   <!-- <project name="android_kernel_motorola_mt6855" path="kernel/motorola/mt6855" remote="mine" revision="main" /> -->
