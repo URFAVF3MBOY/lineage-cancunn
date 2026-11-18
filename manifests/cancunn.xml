@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<manifest>
+  <!--
+    Extra repos to pull into the LineageOS tree.
+    The device tree lives in this repo (device/motorola/cancunn), so you only
+    need entries here for things too big or too separate to keep in it.
+    Uncomment and edit.
+  -->
+
+  <!-- <remote name="mine" fetch="https://github.com/YOUR_USER" /> -->
+
+  <!-- Vendor blobs (extract-files output). Keep them in their own repo. -->
+  <!-- <project name="proprietary_vendor_motorola_cancunn" path="vendor/motorola/cancunn" remote="mine" revision="main" /> -->
+
+  <!-- Kernel / modules, only once you move past the stock boot.img -->
+  <!-- <project name="android_kernel_motorola_mt6855" path="kernel/motorola/mt6855" remote="mine" revision="main" /> -->
+</manifest>

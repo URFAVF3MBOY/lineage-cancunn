@@ -1,0 +1,94 @@
+name: Build LineageOS (cancunn)
+
+on:
+  workflow_dispatch:
+    inputs:
+      lineage_branch:
+        description: LineageOS branch
+        default: lineage-22.2
+      make_target:
+        description: "bacon = full ROM zip. For quick tests: bootimage, vendorbootimage, dtboimage"
+        default: bacon
+      variant:
+        description: Build variant
+        default: userdebug
+      reset_ccache:
+        description: Ignore the saved ccache and start cold
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+env:
+  SRC_DIR: /lineage-src/android
+  CCACHE_DIR: /lineage-src/.ccache
+  LINEAGE_BRANCH: ${{ inputs.lineage_branch }}
+  MAKE_TARGET: ${{ inputs.make_target }}
+  BUILD_VARIANT: ${{ inputs.variant }}
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 355
+    steps:
+      # Merges the free space of / and /mnt into one big volume mounted at /lineage-src
+      - name: Maximize build space
+        uses: easimon/maximize-build-space@v10
+        with:
+          build-mount-path: /lineage-src
+          root-reserve-mb: 4096
+          swap-size-mb: 8192
+          remove-dotnet: "true"
+          remove-android: "true"
+          remove-haskell: "true"
+          remove-codeql: "true"
+          remove-docker-images: "true"
+
+      - uses: actions/checkout@v4
+
+      - name: Install build dependencies
+        run: bash scripts/build.sh deps
+
+      # Rolling cache: every run saves a fresh copy, the newest one is restored next time.
+      - name: Restore ccache
+        if: ${{ !inputs.reset_ccache }}
+        uses: actions/cache/restore@v4
+        with:
+          path: /lineage-src/.ccache
+          key: ccache-${{ inputs.lineage_branch }}-${{ github.run_id }}
+          restore-keys: |
+            ccache-${{ inputs.lineage_branch }}-
+
+      - name: Sync LineageOS source
+        timeout-minutes: 90
+        run: bash scripts/build.sh sync
+
+      - name: Build
+        id: build
+        timeout-minutes: 220   # stops BEFORE the 6h job limit so the cache still gets saved
+        run: bash scripts/build.sh build
+
+      - name: ccache stats
+        if: always()
+        run: ccache -s || true
+
+      - name: Save ccache
+        if: always() && steps.build.conclusion != 'skipped'
+        uses: actions/cache/save@v4
+        with:
+          path: /lineage-src/.ccache
+          key: ccache-${{ inputs.lineage_branch }}-${{ github.run_id }}
+
+      - name: Upload build output
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cancunn-${{ inputs.make_target }}
+          path: |
+            /lineage-src/android/out/target/product/cancunn/lineage-*.zip
+            /lineage-src/android/out/target/product/cancunn/boot.img
+            /lineage-src/android/out/target/product/cancunn/vendor_boot.img
+            /lineage-src/android/out/target/product/cancunn/dtbo.img
+            /lineage-src/android/out/target/product/cancunn/recovery.img
+          if-no-files-found: warn

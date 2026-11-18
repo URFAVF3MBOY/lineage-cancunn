@@ -1,0 +1,54 @@
+name: Extract vendor blobs (cancunn)
+
+on:
+  workflow_dispatch:
+    inputs:
+      blobs_url:
+        description: "Direct download URL of blobs.tar (e.g. a GitHub release asset in this repo)"
+        required: true
+      lineage_branch:
+        description: LineageOS branch for the extract tools
+        default: lineage-22.2
+
+permissions:
+  contents: read
+
+jobs:
+  extract:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build a minimal Android root with the extract tools
+        env:
+          BRANCH: ${{ inputs.lineage_branch }}
+          BLOBS_URL: ${{ inputs.blobs_url }}
+        run: |
+          set -euo pipefail
+          R="$HOME/android"
+          mkdir -p "$R/device/motorola" "$R/dump" "$R/prebuilts" "$R/tools"
+          clone() { git clone --depth=1 -b "$BRANCH" "$1" "$2" || git clone --depth=1 "$1" "$2"; }
+          clone https://github.com/LineageOS/android_tools_extract-utils "$R/tools/extract-utils"
+          clone https://github.com/LineageOS/android_prebuilts_extract-tools "$R/prebuilts/extract-tools"
+          cp -r device/motorola/cancunn "$R/device/motorola/cancunn"
+          curl -fL "$BLOBS_URL" -o "$R/blobs.tar"
+          tar -xf "$R/blobs.tar" -C "$R/dump"
+          echo "Files in dump: $(find "$R/dump" -type f | wc -l)"
+          echo "R=$R" >> "$GITHUB_ENV"
+
+      - name: Report files from the list that are missing in your dump
+        run: |
+          missing=0
+          while read -r f; do [ -e "$R/dump/$f" ] || { echo "missing: $f"; missing=$((missing+1)); }; done < scripts/blob-list.txt
+          echo "Missing total: $missing"
+
+      - name: Run extract-files.sh against the dump
+        run: |
+          cd "$R/device/motorola/cancunn"
+          bash extract-files.sh "$R/dump"
+
+      - name: Upload generated vendor tree
+        uses: actions/upload-artifact@v4
+        with:
+          name: vendor_motorola_cancunn
+          path: ${{ env.R }}/vendor/motorola/cancunn
